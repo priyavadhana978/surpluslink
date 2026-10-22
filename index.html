@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SurplusLink: surplus food, linked to people who need it</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="SurplusLink home">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+        <circle cx="11" cy="16" r="8" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="21" cy="16" r="8" fill="none" stroke="#F2A93B" stroke-width="3"/>
+      </svg>
+      SurplusLink
+    </a>
+    <nav id="nav" aria-label="Main">
+      <button type="button" data-view="home" aria-current="page">Home</button>
+      <button type="button" data-view="board">Live board</button>
+      <button type="button" data-view="activity" hidden>My activity</button>
+      <button type="button" data-view="admin" hidden>Admin</button>
+    </nav>
+    <div class="session">
+      <button type="button" class="primary" id="btn-post" hidden>Post surplus food</button>
+      <span id="user-chip" class="user-chip" hidden></span>
+      <button type="button" class="ghost" id="btn-logout" hidden>Log out</button>
+      <button type="button" class="primary" id="btn-login">Log in</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Home -->
+    <section id="view-home">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>Surplus food shouldn't end up in the bin</h1>
+          <p>Hostel messes, canteens, restaurants and event teams post what is left over. NGOs and volunteers nearby claim it and collect it before it spoils.</p>
+          <div class="hero-actions">
+            <button type="button" class="primary" data-go="board">See food near you</button>
+            <button type="button" class="ghost" data-go="join">Start donating or collecting</button>
+          </div>
+        </div>
+        <article class="listing soon sample" aria-label="Example listing">
+          <div class="l-head"><h3>Veg biryani, 20 plates</h3><span class="chip">Cooked meals</span></div>
+          <p class="l-meta"><strong>20 servings</strong><span>Hostel A mess</span><span>0.8 km away</span></p>
+          <div class="fresh" aria-hidden="true"><div class="fresh-bar" style="width:42%"></div></div>
+          <p class="fresh-text">1 h 20 min left to collect</p>
+        </article>
+      </div>
+
+      <div class="band">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><h3>Donor posts</h3><p>Title, servings, pickup deadline and a pin on the map. It takes under a minute.</p></li>
+          <li><h3>Receiver claims</h3><p>Nearby NGOs see it live. The first to claim gets it, and nobody else can double-book.</p></li>
+          <li><h3>Food is collected</h3><p>Contact details unlock after a claim. Mark it picked up and the impact count grows.</p></li>
+        </ol>
+      </div>
+
+      <div class="band alt">
+        <h2>Impact so far</h2>
+        <div class="stats" id="home-stats"></div>
+      </div>
+
+      <div class="band">
+        <h2>Questions</h2>
+        <details><summary>Is the food safe?</summary><p>Every listing has a pickup deadline of at most 48 hours, and expired listings disappear from the board automatically. Donors describe ingredients and allergens in the details.</p></details>
+        <details><summary>Who can see my phone number?</summary><p>Only the donor and the receiver involved, and only after a claim.</p></details>
+        <details><summary>Does it cost anything?</summary><p>No. SurplusLink is free for donors and receivers.</p></details>
+      </div>
+    </section>
+
+    <!-- Live board -->
+    <section id="view-board" hidden>
+      <div class="intro">
+        <h1>Good food, ready for pickup nearby</h1>
+        <div class="stats" id="stats" aria-live="polite"></div>
+      </div>
+
+      <div class="board">
+        <div class="board-list">
+          <div class="filters">
+            <input type="search" id="f-q" placeholder="Search food, place or donor" aria-label="Search listings">
+            <select id="f-type" aria-label="Filter by food type">
+              <option value="">All food types</option>
+              <option>Cooked meals</option>
+              <option>Bakery</option>
+              <option>Fruits &amp; vegetables</option>
+              <option>Packaged food</option>
+              <option>Beverages</option>
+              <option>Other</option>
+            </select>
+            <button type="button" class="ghost" id="btn-near">Sort by distance</button>
+          </div>
+          <div id="listings"></div>
+        </div>
+        <div id="map" role="region" aria-label="Map of available food"></div>
+      </div>
+    </section>
+
+    <!-- My activity -->
+    <section id="view-activity" class="page" hidden>
+      <h1 id="activity-title">My activity</h1>
+      <div id="activity-list"></div>
+    </section>
+
+    <!-- Admin -->
+    <section id="view-admin" class="page" hidden>
+      <h1>Admin</h1>
+      <h2>Accounts</h2>
+      <div class="table-wrap">
+        <table id="admin-users">
+          <thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Organisation</th><th>Joined</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <h2>All listings</h2>
+      <div id="admin-listings"></div>
+    </section>
+  </main>
+
+  <footer class="footer">SurplusLink, a student project to link surplus food with people who need it.</footer>
+
+  <!-- Log in / create account -->
+  <dialog id="dlg-auth">
+    <form id="auth-form" novalidate>
+      <h2 id="auth-title">Log in</h2>
+      <div class="seg" role="group" aria-label="Log in or create account">
+        <button type="button" data-mode="login" class="on">Log in</button>
+        <button type="button" data-mode="register">Create account</button>
+      </div>
+
+      <fieldset class="reg-only">
+        <legend>I want to</legend>
+        <label class="radio"><input type="radio" name="role" value="donor" checked> Give surplus food</label>
+        <label class="radio"><input type="radio" name="role" value="receiver"> Collect food for people who need it</label>
+      </fieldset>
+      <label class="reg-only">Your name <input name="name" autocomplete="name"></label>
+      <label class="reg-only">Organisation (optional) <input name="org" placeholder="Hostel mess, NGO, restaurant"></label>
+      <label class="reg-only">Phone (shared only after a claim) <input name="phone" type="tel" autocomplete="tel"></label>
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" minlength="6" required></label>
+
+      <p class="form-error" id="auth-error" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="ghost" data-close>Cancel</button>
+        <button type="submit" class="primary" id="auth-submit">Log in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Post / edit a listing -->
+  <dialog id="dlg-post">
+    <form id="post-form" novalidate>
+      <h2 id="post-title">Post surplus food</h2>
+      <label>Title <input name="title" maxlength="120" placeholder="Veg biryani, 20 plates" required></label>
+      <div class="row2">
+        <label>Food type
+          <select name="food_type">
+            <option>Cooked meals</option>
+            <option>Bakery</option>
+            <option>Fruits &amp; vegetables</option>
+            <option>Packaged food</option>
+            <option>Beverages</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Servings <input name="quantity" type="number" min="1" max="10000" required></label>
+      </div>
+      <label>Details (optional) <textarea name="description" rows="2" maxlength="500" placeholder="Ingredients, packaging, allergens"></textarea></label>
+      <label>Collect before <input name="pickup_by" type="datetime-local" required></label>
+      <label>Pickup address <input name="address" maxlength="200" required></label>
+      <div class="pick">
+        <div class="pick-head">
+          <span id="pick-hint">Tap the map to mark the pickup spot.</span>
+          <button type="button" class="ghost" id="btn-here">Use my location</button>
+        </div>
+        <div id="pick-map"></div>
+      </div>
+
+      <p class="form-error" id="post-error" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="ghost" data-close>Cancel</button>
+        <button type="submit" class="primary" id="post-submit">Post listing</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
